@@ -1,0 +1,13 @@
+# .gitignore
+venv/
+node_modules/
+dist/
+frontend/dist/
+__pycache__/
+*.pyc
+*.pkl
+*.joblib
+.DS_Store
+.env
+.env.local
+.env.*.local

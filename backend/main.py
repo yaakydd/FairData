@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from upload.routes import router as upload_router
+from routes.upload import router as upload_router
 
 app = FastAPI(title="FairData")
 

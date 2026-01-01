@@ -1,0 +1,31 @@
+data-automation-app/
+├── backend/                    # Python FastAPI server
+│   ├── main.py                # Entry point
+│   ├── routes/                # API endpoints
+│   │   ├── upload.py         # File upload
+│   │   ├── analysis.py       # Data analysis
+│   │   ├── cleaning.py       # Data cleaning
+│   │   └── ml.py             # Machine learning
+│   ├── services/             # Business logic
+│   │   ├── validator.py      # Data validation
+│   │   ├── quality_checker.py # Quality checks
+│   │   ├── analyzer.py       # EDA & reports
+│   │   └── ml_engine.py      # ML models
+│   ├── utils/                # Helper functions
+│   │   ├── explanations.py   # Plain English explanations
+│   │   └── file_handler.py   # File operations
+│   └── requirements.txt      # Python dependencies
+│
+└── frontend/                  # React app
+    ├── src/
+    │   ├── components/
+    │   │   ├── Upload/       # File upload UI
+    │   │   ├── Quality/      # Quality reports
+    │   │   ├── Cleaning/     # Cleaning interface
+    │   │   ├── Analysis/     # EDA visualizations
+    │   │   └── ML/           # ML model building
+    │   ├── pages/
+    │   │   └── Dashboard.jsx # Main app page
+    │   └── utils/
+    │       └── api.js        # API calls
+    └── package.json

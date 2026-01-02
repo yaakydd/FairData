@@ -13,7 +13,7 @@ class DataCleaner:
     
     def __init__(self, df: pd.DataFrame):
         self.df = df.copy()  # Work on a copy, don't modify original
-        self.cleaning_log = []  # Track what we do
+        self.cleaning_log: List[Dict[str, Any]] = []  # Track what we do
         
     def remove_duplicates(self, subset: Optional[List[str]] = None) -> Dict[str, Any]:
         """
@@ -100,17 +100,16 @@ class DataCleaner:
         elif method == 'forward_fill':
             self.df[column] = self.df[column].ffill()
             explanation = (
-            f"Filled {missing_before} missing values by copying the previous value. "
-            f"Think of it like 'ditto marks' - when something is blank, assume it's the same as above."
-        )
+                f"Filled {missing_before} missing values by copying the previous value. "
+                f"Think of it like 'ditto marks' - when something is blank, assume it's the same as above."
+            )
 
         elif method == 'backward_fill':
             self.df[column] = self.df[column].bfill()
             explanation = (
-            f"Filled {missing_before} missing values by copying the next value. "
-            f"Like looking ahead to see what comes next and using that."
-        )
-
+                f"Filled {missing_before} missing values by copying the next value. "
+                f"Like looking ahead to see what comes next and using that."
+            )
             
         elif method == 'custom' and custom_value is not None:
             self.df[column].fillna(custom_value, inplace=True)
@@ -128,7 +127,7 @@ class DataCleaner:
             "action": "fill_missing",
             "column": column,
             "method": method,
-            "filled_count": missing_before - missing_after,
+            "filled_count": int(missing_before - missing_after),
             "missing_before": int(missing_before),
             "missing_after": int(missing_after),
             "explanation": explanation
@@ -158,8 +157,9 @@ class DataCleaner:
             Q3 = self.df[column].quantile(0.75)
             IQR = Q3 - Q1
             
-            lower_bound = Q1 - threshold * IQR
-            upper_bound = Q3 + threshold * IQR
+            # Convert to float for comparison
+            lower_bound = float(Q1 - threshold * IQR)
+            upper_bound = float(Q3 + threshold * IQR)
             
             # Keep only values within bounds
             self.df = self.df[
@@ -174,14 +174,21 @@ class DataCleaner:
             )
             
         elif method == 'zscore':
-            z_scores = np.abs(stats.zscore(self.df[column].dropna()))
-            self.df = self.df[z_scores < threshold]
+            # Get numeric data only, drop NaN
+            numeric_data = pd.to_numeric(self.df[column], errors='coerce').dropna()
+            
+            if len(numeric_data) > 0:
+                z_scores = np.abs(stats.zscore(numeric_data))
+                valid_indices = numeric_data.index[z_scores < threshold]
+                self.df = self.df.loc[valid_indices]
             
             explanation = (
                 f"Removed {initial_rows - len(self.df)} rows with outliers in '{column}'. "
                 f"Removed values more than {threshold} standard deviations from the mean. "
                 f"Like removing extremely unusual measurements."
             )
+        else:
+            raise ValueError(f"Invalid method: {method}. Use 'iqr' or 'zscore'.")
         
         log_entry = {
             "action": "remove_outliers",
@@ -305,9 +312,21 @@ class DataCleaner:
         removed_columns = []
         
         for col in self.df.select_dtypes(include=[np.number]).columns:
-            if self.df[col].var() < threshold:
-                removed_columns.append(col)
-                self.df = self.df.drop(columns=[col])
+            try:
+                var_result = self.df[col].var()
+                
+                # Skip if variance is NaN
+                if pd.isna(var_result):
+                    continue
+                
+                variance_value = float(pd.to_numeric(var_result))
+                
+                if variance_value < threshold:
+                    removed_columns.append(col)
+                    self.df = self.df.drop(columns=[col])
+                    
+            except (TypeError, ValueError):
+                continue
         
         log_entry = {
             "action": "remove_low_variance",

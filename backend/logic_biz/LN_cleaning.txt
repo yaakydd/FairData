@@ -1,0 +1,76 @@
+What DataValidator vs DataCleaner (quality_checker) REALLY do
+🔍 Short answer
+
+They do different jobs on purpose.
+
+Component	What it does	Touches data?
+DataValidator	Finds problems	❌ NO
+DataCleaner (quality_checker)	Fixes problems	✅ YES
+🩺 DataValidator = Doctor (Diagnosis)
+
+Purpose:
+👉 Look at the data and report issues, nothing more.
+
+Examples of what a validator does:
+
+“This column has missing values”
+
+“This column has mixed data types”
+
+“This column has outliers”
+
+“This column has low variance”
+
+Key rule:
+
+Validators must NEVER change data
+
+Why?
+
+So users can see problems before fixing
+
+So you can generate cleaning recommendations
+
+So you can build trust
+
+Think:
+
+A doctor examines you and writes a report — they don’t perform surgery immediately.
+
+🧹 DataCleaner (quality_checker) = Janitor / Surgeon (Action)
+
+Purpose:
+👉 Fix specific problems when the user asks.
+
+Examples:
+
+Remove duplicates
+
+Fill missing values
+
+Remove outliers
+
+Standardize text
+
+Convert types
+
+Remove low-variance columns
+
+Key rule:
+
+Cleaners always modify data
+
+Think:
+
+Surgery only happens after diagnosis and consent.
+
+✅ Why your separation is CORRECT
+
+Your architecture is exactly how enterprise systems work:
+
+UPLOAD
+   ↓
+VALIDATE (read-only)
+   ↓
+USER DECIDES
+  

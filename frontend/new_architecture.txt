@@ -1,0 +1,119 @@
+data-automation-app/
+├── backend/
+│   ├── main.py                           # FastAPI entry point
+│   ├── requirements.txt                  # Dependencies
+│   │
+│   ├── routes/                           # API Endpoints
+│   │   ├── upload.py                    # File uploads
+│   │   ├── cleaning.py                  # Data cleaning operations
+│   │   ├── analysis.py                  # Statistical analysis & ML ⭐NEW
+│   │   ├── learning.py                  # Learning goals & tutorials ⭐NEW
+│   │   ├── workspace.py                 # Multi-dataset management ⭐NEW
+│   │   └── history.py                   # Version control & tracking ⭐NEW
+│   │
+│   ├── logic_biz/                       # Business Logic
+│   │   ├── data_validator.py           # Data validation
+│   │   ├── data_quality_checker.py     # Data cleaning
+│   │   ├── data_analyzer.py            # EDA & analysis ⭐NEW
+│   │   ├── ml_engine.py                # ML models ⭐NEW
+│   │   └── learning_content.py         # Educational content ⭐NEW
+│   │
+│   ├── utils/                           # Helper Functions
+│   │   ├── file_handler.py             # File operations
+│   │   ├── explanations.py             # Plain English explanations ⭐NEW
+│   │   └── quick_actions.py            # Common task shortcuts ⭐NEW
+│   │
+│   └── storage/                         # Data Storage
+│       ├── datasets.py                  # Dataset storage ⭐NEW
+│       ├── workspaces.py               # Workspace management ⭐NEW
+│       └── history.py                  # Version tracking ⭐NEW
+│
+└── frontend/
+    ├── src/
+    │   ├── components/
+    │   │   ├── Upload/                 # File upload UI
+    │   │   ├── Workspace/              # Multi-dataset manager ⭐NEW
+    │   │   ├── LearningPanel/          # Learning sidebar ⭐NEW
+    │   │   ├── QuickActions/           # Quick action buttons ⭐NEW
+    │   │   ├── History/                # Version control UI ⭐NEW
+    │   │   ├── Chat/                   # Main chat interface
+    │   │   └── Visualization/          # Charts & graphs ⭐NEW
+    │   │
+    │   ├── pages/
+    │   │   └── Dashboard.jsx           # Main app page
+    │   │
+    │   └── utils/
+    │       └── api.js                  # API calls
+    │
+    └── package.json
+
+    1. Learning Goals System 📚
+What it does:
+
+Teaches data science concepts as users work
+Shows tooltips, explanations, and tutorials
+Tracks learning progress
+Provides interactive lessons
+
+Example User Experience:
+User: "What are outliers?"
+    ↓
+AI: "Great question! Let me show you..."
+    [Opens interactive tutorial]
+    [Shows real examples from their data]
+    [Gives quiz to test understanding]
+    [Marks concept as 'learned']
+
+2. Quick Actions ⚡
+What it does:
+
+One-click common operations
+Smart suggestions based on data
+Batch operations
+
+Examples:
+Quick Action Buttons:
+├─ 🧹 Auto-Clean (removes duplicates, fills missing)
+├─ 📊 Quick Stats (instant summary)
+├─ 📈 Auto-Visualize (creates charts)
+├─ 🤖 Suggest Models (recommends ML models)
+└─ 📄 Generate Report (creates PDF)
+
+3. Multi-Dataset Workspace 📁
+What it does:
+
+Manage multiple datasets at once
+Compare datasets side-by-side
+Merge/join datasets
+Organize into projects
+
+Example:
+Workspace View:
+├─ Project: Sales Analysis
+│   ├─ customers.csv (cleaned)
+│   ├─ orders.csv (raw)
+│   └─ products.xlsx (cleaning...)
+│
+└─ Project: Marketing Campaign
+    ├─ leads.csv
+    └─ conversions.csv
+
+4. Version Control & History 🕒
+What it does:
+
+Track every change made
+Undo/redo operations
+Compare versions
+Create snapshots
+
+Example:
+History Timeline:
+10:30 AM - Uploaded customers.csv
+10:32 AM - Removed 15 duplicates
+10:35 AM - Filled missing ages (mean)
+10:40 AM - Created snapshot "Clean Data v1"
+10:45 AM - Removed outliers (50 rows)
+           [Undo] [View Changes]
+
+🏗️ STEP-BY-STEP IMPLEMENTATION
+Let me build each component for you!

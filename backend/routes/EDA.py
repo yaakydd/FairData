@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
-import math
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from scipy.stats import linregress
 from scipy import stats
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler, MinMaxScaler, RobustScaler, PowerTransformer, KBinsDiscretizer, PolynomialFeatures, FunctionTransformer
@@ -80,9 +79,9 @@ class DataAnalyzer:
                 "data_type": str(self.df[col].dtype),
                 "non_null_count": int(self.df[col].count()),
                 "null_count": int(self.df[col].isnull().sum()),
-                "null_percentage": round((self.df[col].isnull().sum() / len(self.df)) * 100, 2),
+                "null_percentage": round(float(self.df[col].isnull().sum() / len(self.df)) * 100, 2),
                 "unique_values": int(self.df[col].nunique()),
-                "uniqueness_ratio": round(self.df[col].nunique() / len(self.df), 4)
+                "uniqueness_ratio": round(float(self.df[col].nunique() / len(self.df)), 4)
             }
             
             # Type-specific analysis
@@ -108,38 +107,49 @@ class DataAnalyzer:
                 "explanation": f"The '{col}' column is entirely empty - no values to analyze!"
             }
         
-        # Calculate statistics
-        mean = col_data.mean()
-        median = col_data.median()
-        std = col_data.std()
-        min_val = col_data.min()
-        max_val = col_data.max()
-        
-        # Check for skewness
-        skewness = col_data.skew()
-        
-        # Detect outliers using IQR
-        Q1 = col_data.quantile(0.25)
-        Q3 = col_data.quantile(0.75)
-        IQR = Q3 - Q1
-        outliers = col_data[(col_data < Q1 - 1.5*IQR) | (col_data > Q3 + 1.5*IQR)]
+        # Calculate statistics - convert to float to handle complex numbers
+        try:
+            col_data_float = pd.to_numeric(col_data, errors='coerce')
+            
+            # Convert statistics to numbers safely
+            mean_val = self._convert_to_number(col_data_float.mean())
+            median_val = self._convert_to_number(col_data_float.median())
+            std_val = self._convert_to_number(col_data_float.std())
+            min_val = self._convert_to_number(col_data_float.min())
+            max_val = self._convert_to_number(col_data_float.max())
+            
+            # Check for skewness
+            skewness_val = self._convert_to_number(col_data_float.skew())
+            
+            # Detect outliers using IQR
+            Q1_val = self._convert_to_number(col_data_float.quantile(0.25))
+            Q3_val = self._convert_to_number(col_data_float.quantile(0.75))
+            IQR = Q3_val - Q1_val
+            outliers = col_data_float[(col_data_float < Q1_val - 1.5*IQR) | (col_data_float > Q3_val + 1.5*IQR)]
+            
+        except (TypeError, ValueError) as e:
+            return {
+                "column_type": "numeric",
+                "error": f"Cannot analyze column '{col}': {str(e)}",
+                "explanation": f"The '{col}' column contains values that cannot be analyzed as numbers."
+            }
         
         # Generate explanation
-        if abs(mean - median) < std * 0.1:
+        if abs(mean_val - median_val) < std_val * 0.1:
             distribution_type = "symmetric (balanced)"
             dist_explanation = (
                 f"The values are evenly spread around the middle. "
                 f"Like heights in a classroom - most people are average height, "
                 f"with fewer very tall or very short people."
             )
-        elif skewness > 1:
+        elif skewness_val > 1.0:
             distribution_type = "right-skewed (tail on right)"
             dist_explanation = (
                 f"Most values are low, with a few very high values pulling the average up. "
                 f"Like income - most people earn moderate amounts, but billionaires "
                 f"pull the average way up."
             )
-        elif skewness < -1:
+        elif skewness_val < -1.0:
             distribution_type = "left-skewed (tail on left)"
             dist_explanation = (
                 f"Most values are high, with a few very low values pulling the average down. "
@@ -152,30 +162,30 @@ class DataAnalyzer:
         return {
             "column_type": "numeric",
             "statistics": {
-                "mean": round(mean, 2),
-                "median": round(median, 2),
-                "std_dev": round(std, 2),
+                "mean": round(mean_val, 2),
+                "median": round(median_val, 2),
+                "std_dev": round(std_val, 2),
                 "min": round(min_val, 2),
                 "max": round(max_val, 2),
                 "range": round(max_val - min_val, 2)
             },
             "distribution": {
                 "type": distribution_type,
-                "skewness": round(skewness, 2)
+                "skewness": round(skewness_val, 2)
             },
             "outliers": {
                 "count": len(outliers),
-                "percentage": round((len(outliers) / len(col_data)) * 100, 2)
+                "percentage": round((len(outliers) / len(col_data_float)) * 100, 2)
             },
             "explanation": (
                 f" '{col}' is a numeric column with values ranging from "
                 f"{min_val:.2f} to {max_val:.2f}."
                 f"\n\n Center Point:"
-                f"\n• Average (mean): {mean:.2f}"
-                f"\n• Middle value (median): {median:.2f}"
+                f"\n• Average (mean): {mean_val:.2f}"
+                f"\n• Middle value (median): {median_val:.2f}"
                 f"\n\n Distribution: {dist_explanation}"
                 f"\n\n Outliers: Found {len(outliers)} unusual values "
-                f"({(len(outliers)/len(col_data)*100):.1f}% of data)."
+                f"({(len(outliers)/len(col_data_float)*100):.1f}% of data)."
             )
         }
     
@@ -194,15 +204,15 @@ class DataAnalyzer:
         top_5 = value_counts.head(5)
         
         # Calculate concentration
-        top_value_pct = (value_counts.iloc[0] / len(col_data)) * 100
+        top_value_pct = float((value_counts.iloc[0] / len(col_data)) * 100)
         
-        if top_value_pct > 50:
+        if top_value_pct > 50.0:
             concentration = "highly concentrated"
             conc_explanation = (
                 f"One value ('{value_counts.index[0]}') appears {top_value_pct:.1f}% of the time. "
                 f"Think of it like a survey where most people give the same answer."
             )
-        elif top_value_pct > 25:
+        elif top_value_pct > 25.0:
             concentration = "moderately concentrated"
             conc_explanation = (
                 f"The most common value ('{value_counts.index[0]}') appears "
@@ -255,8 +265,8 @@ class DataAnalyzer:
             "column_type": "datetime",
             "earliest": str(min_date),
             "latest": str(max_date),
-            "range_days": date_range,
-            "range_years": round(date_range / 365.25, 2),
+            "range_days": int(date_range),
+            "range_years": round(float(date_range) / 365.25, 2),
             "explanation": (
                 f"📅 '{col}' contains dates ranging from {min_date.date()} "
                 f"to {max_date.date()}."
@@ -311,8 +321,9 @@ class DataAnalyzer:
                 )
             }
         
-        # Calculate correlation matrix
-        corr_matrix = self.df[self.numeric_cols].corr()
+        # Calculate correlation matrix - ensure numeric conversion
+        numeric_df = self.df[self.numeric_cols].apply(pd.to_numeric, errors='coerce')
+        corr_matrix = numeric_df.corr()
         
         # Find strong correlations (excluding diagonal)
         strong_correlations = []
@@ -323,25 +334,25 @@ class DataAnalyzer:
                 col2 = corr_matrix.columns[j]
                 corr_value = corr_matrix.iloc[i, j]
                 
-                # Convert corr_value safely
-                
+                # Convert corr_value safely with explicit type checking
                 if pd.notna(corr_value):
                     try:
-                        corr = float(corr_value)
+                        # Use safe conversion
+                        corr = self._convert_to_number(corr_value)
                     except (TypeError, ValueError):
                         corr = None
-        else:
-            corr = None
-
-        # Now work ONLY with clean floats
-        if corr is not None and abs(corr) > 0.7:
-            strong_correlations.append({
-            "column1": col1,
-            "column2": col2,
-            "correlation": round(corr, 3),
-            "strength": "strong positive" if corr > 0.7 else "strong negative",
-            "explanation": self._explain_correlation(col1, col2, corr)
-        })
+                else:
+                    corr = None
+                
+                # Now work ONLY with clean floats
+                if corr is not None and abs(corr) > 0.7:
+                    strong_correlations.append({
+                        "column1": col1,
+                        "column2": col2,
+                        "correlation": round(corr, 3),
+                        "strength": "strong positive" if corr > 0.7 else "strong negative",
+                        "explanation": self._explain_correlation(col1, col2, corr)
+                    })
         
         return {
             "correlation_matrix": corr_matrix.to_dict(),
@@ -390,22 +401,33 @@ class DataAnalyzer:
             col_data = self.df[col].dropna()
             
             if len(col_data) > 0:
-                # Test for normality (bell curve)
-                _, p_value = stats.normaltest(col_data)
-                is_normal = p_value > 0.05
-                
-                distributions.append({
-                    "column": col,
-                    "is_normal": is_normal,
-                    "p_value": round(p_value, 4),
-                    "explanation": (
-                        f"'{col}' follows a normal distribution (bell curve). "
-                        f"Most values cluster around the average."
-                        if is_normal else
-                        f"'{col}' does NOT follow a normal distribution. "
-                        f"Values are skewed or have unusual patterns."
-                    )
-                })
+                # Convert to float for normaltest
+                try:
+                    col_data_float = pd.to_numeric(col_data, errors='coerce').dropna()
+                    if len(col_data_float) > 0:
+                        # Test for normality (bell curve)
+                        _, p_value = stats.normaltest(col_data_float)
+                        is_normal = p_value > 0.05
+                        
+                        distributions.append({
+                            "column": col,
+                            "is_normal": is_normal,
+                            "p_value": self._convert_to_number(p_value),
+                            "explanation": (
+                                f"'{col}' follows a normal distribution (bell curve). "
+                                f"Most values cluster around the average."
+                                if is_normal else
+                                f"'{col}' does NOT follow a normal distribution. "
+                                f"Values are skewed or have unusual patterns."
+                            )
+                        })
+                except Exception as e:
+                    distributions.append({
+                        "column": col,
+                        "is_normal": False,
+                        "p_value": None,
+                        "explanation": f"Cannot test normality for column '{col}': {str(e)}"
+                    })
         
         return {
             "distributions": distributions,
@@ -433,7 +455,7 @@ class DataAnalyzer:
         for col in self.categorical_cols:
             unique_count = self.df[col].nunique()
             total_count = len(self.df)
-            cardinality_ratio = unique_count / total_count
+            cardinality_ratio = float(unique_count) / float(total_count)
             
             # Classify cardinality
             if cardinality_ratio > 0.5:
@@ -494,29 +516,48 @@ class DataAnalyzer:
         viz_data['histograms'] = {}
         for col in self.numeric_cols[:5]:  # Limit to first 5 to avoid overload
             col_data = self.df[col].dropna()
-            hist, bin_edges = np.histogram(col_data, bins=20)
-            viz_data['histograms'][col] = {
-                'counts': hist.tolist(),
-                'bin_edges': bin_edges.tolist(),
-                'xlabel': col,
-                'ylabel': 'Frequency'
-            }
+            # Convert to float for histogram
+            try:
+                col_data_float = pd.to_numeric(col_data, errors='coerce').dropna()
+                if len(col_data_float) > 0:
+                    hist, bin_edges = np.histogram(col_data_float, bins=20)
+                    viz_data['histograms'][col] = {
+                        'counts': hist.tolist(),
+                        'bin_edges': [self._convert_to_number(edge) for edge in bin_edges.tolist()],
+                        'xlabel': col,
+                        'ylabel': 'Frequency'
+                    }
+            except Exception:
+                continue  # Skip columns that can't be converted to numeric
     
         # 2. Box plot data for numeric columns
         viz_data['boxplots'] = {}
         for col in self.numeric_cols[:5]:
             col_data = self.df[col].dropna()
-            viz_data['boxplots'][col] = {
-                'min': float(col_data.min()),
-                'q1': float(col_data.quantile(0.25)),
-                'median': float(col_data.median()),
-                'q3': float(col_data.quantile(0.75)),
-                'max': float(col_data.max()),
-                'outliers': col_data[
-                    (col_data < col_data.quantile(0.25) - 1.5 * (col_data.quantile(0.75) - col_data.quantile(0.25))) |
-                    (col_data > col_data.quantile(0.75) + 1.5 * (col_data.quantile(0.75) - col_data.quantile(0.25)))
-                ].tolist()[:50]  # Limit outliers to 50
-            }
+            try:
+                col_data_float = pd.to_numeric(col_data, errors='coerce').dropna()
+                if len(col_data_float) > 0:
+                    q1_val = self._convert_to_number(col_data_float.quantile(0.25))
+                    q3_val = self._convert_to_number(col_data_float.quantile(0.75))
+                    iqr = q3_val - q1_val
+                    lower_bound = q1_val - 1.5 * iqr
+                    upper_bound = q3_val + 1.5 * iqr
+                    
+                    # Get outliers as list of floats
+                    outliers_mask = (col_data_float < lower_bound) | (col_data_float > upper_bound)
+                    outliers_series = col_data_float[outliers_mask]
+                    outliers_list = [self._convert_to_number(x) for x in outliers_series.head(50).tolist()]
+                    
+                    viz_data['boxplots'][col] = {
+                        'min': self._convert_to_number(col_data_float.min()),
+                        'q1': q1_val,
+                        'median': self._convert_to_number(col_data_float.median()),
+                        'q3': q3_val,
+                        'max': self._convert_to_number(col_data_float.max()),
+                        'outliers': outliers_list
+                    }
+            except Exception:
+                continue  # Skip columns that can't be analyzed
     
          # 3. Bar chart data for categorical columns
         viz_data['bar_charts'] = {}
@@ -529,7 +570,9 @@ class DataAnalyzer:
     
         # 4. Correlation heatmap data
         if len(self.numeric_cols) >= 2:
-            corr_matrix = self.df[self.numeric_cols].corr()
+            # Use only columns that can be converted to numeric
+            numeric_df = self.df[self.numeric_cols].apply(pd.to_numeric, errors='coerce')
+            corr_matrix = numeric_df.corr()
             viz_data['correlation_heatmap'] = {
                 'columns': corr_matrix.columns.tolist(),
                 'data': corr_matrix.values.tolist()
@@ -542,12 +585,22 @@ class DataAnalyzer:
                      for j in range(i+1, min(3, len(self.numeric_cols)))]
     
         for col1, col2 in numeric_pairs[:5]:  # Limit to 5 pairs
-            viz_data['scatter_plots'].append({
-                'x_column': col1,
-                'y_column': col2,
-                'x_data': self.df[col1].dropna().tolist()[:500],  # Sample 500 points
-                'y_data': self.df[col2].dropna().tolist()[:500]
-        })
+            x_data = self.df[col1].dropna()
+            y_data = self.df[col2].dropna()
+            # Align indices and convert to float
+            try:
+                x_data_float = pd.to_numeric(x_data, errors='coerce')
+                y_data_float = pd.to_numeric(y_data, errors='coerce')
+                aligned_data = pd.concat([x_data_float, y_data_float], axis=1).dropna()
+                if len(aligned_data) > 0:
+                    viz_data['scatter_plots'].append({
+                        'x_column': col1,
+                        'y_column': col2,
+                        'x_data': [self._convert_to_number(x) for x in aligned_data[col1].head(500).tolist()],
+                        'y_data': [self._convert_to_number(y) for y in aligned_data[col2].head(500).tolist()]
+                    })
+            except Exception:
+                continue  # Skip pairs that can't be analyzed
     
         return {
             "visualization_data": viz_data,
@@ -589,24 +642,30 @@ class DataAnalyzer:
         monthly_avg = ts.resample('M').mean()
     
         # Detect trend
-       
-        x = np.arange(len(daily_avg))
-        # protect linregress from empty data
-        y = pd.to_numeric(daily_avg[value_col].dropna(), errors='coerce').values
-        if len(y) < 2:
-            slope = 0.0
-            r_value = 0.0
-        else:
-            x = np.arange(len(y))
-            try:
-                slope, intercept, r_value, p_value, std_err = linregress(x, y)
-            except Exception:
+        try:
+            y = pd.to_numeric(daily_avg[value_col].dropna(), errors='coerce').values
+            if len(y) < 2:
                 slope = 0.0
                 r_value = 0.0
+            else:
+                x = np.arange(len(y))
+                try:
+                    result = linregress(x, y)
+                    # Access attributes properly - use the returned tuple
+                    # Fix: Unpack the result into individual variables
+                    slope_val, intercept, r_val, p_val, std_err = result
+                    slope = self._convert_to_number(slope_val)
+                    r_value = self._convert_to_number(r_val)
+                except Exception as e:
+                    slope = 0.0
+                    r_value = 0.0
+        except Exception:
+            slope = 0.0
+            r_value = 0.0
     
-        if slope > 0:
+        if slope > 0.0:
             trend = "increasing"
-        elif slope < 0:
+        elif slope < 0.0:
             trend = "decreasing"
         else:
             trend = "stable"
@@ -623,16 +682,16 @@ class DataAnalyzer:
             },
             "trend": {
                 "direction": trend,
-                "slope": round(float(slope), 4),
-                "strength": round(abs(float(r_value)), 2)
+                "slope": round(slope, 4),
+                "strength": round(abs(r_value), 2)
             },
             "daily_data": {
                 "dates": daily_dates,
-                "values": [float(x) if not pd.isna(x) else None for x in daily_avg[value_col].tolist()]
+                "values": [self._convert_to_number(x) if not pd.isna(x) else None for x in daily_avg[value_col].tolist()]
             },
             "monthly_data": {
                 "dates": monthly_dates,
-                "values": [float(x) if not pd.isna(x) else None for x in monthly_avg[value_col].tolist()]
+                "values": [self._convert_to_number(x) if not pd.isna(x) else None for x in monthly_avg[value_col].tolist()]
             },
             "explanation": (
                 f"📅 Time Series Analysis:"
@@ -652,13 +711,13 @@ class DataAnalyzer:
         scores = {}
         
         # Completeness (no missing values)
-        total_cells = self.df.size
-        missing_cells = self.df.isnull().sum().sum()
+        total_cells = float(self.df.size)
+        missing_cells = float(self.df.isnull().sum().sum())
         completeness = ((total_cells - missing_cells) / total_cells) * 100
         scores['completeness'] = round(completeness, 2)
         
         # Uniqueness (no duplicates)
-        duplicate_rows = self.df.duplicated().sum()
+        duplicate_rows = float(self.df.duplicated().sum())
         uniqueness = ((len(self.df) - duplicate_rows) / len(self.df)) * 100
         scores['uniqueness'] = round(uniqueness, 2)
         
@@ -688,16 +747,16 @@ class DataAnalyzer:
         scores['overall'] = round(overall_score, 2)
         
         # Generate grade
-        if overall_score >= 90:
+        if overall_score >= 90.0:
             grade = "A (Excellent)"
             explanation = "Your data is in great shape! Minimal issues found."
-        elif overall_score >= 80:
+        elif overall_score >= 80.0:
             grade = "B (Good)"
             explanation = "Your data is pretty clean with minor issues."
-        elif overall_score >= 70:
+        elif overall_score >= 70.0:
             grade = "C (Fair)"
             explanation = "Your data has some issues that should be addressed."
-        elif overall_score >= 60:
+        elif overall_score >= 60.0:
             grade = "D (Poor)"
             explanation = "Your data has significant issues. Cleaning is highly recommended."
         else:
@@ -730,7 +789,7 @@ class DataAnalyzer:
         
         # Insight 1: Missing data patterns
         missing_pct = (self.df.isnull().sum().sum() / self.df.size) * 100
-        if missing_pct > 10:
+        if missing_pct > 10.0:
             insights.append({
                 "type": "warning",
                 "title": "High Missing Data",
@@ -777,13 +836,21 @@ class DataAnalyzer:
         
         # Insight 4: Strong correlations
         if len(self.numeric_cols) >= 2:
-            corr_matrix = self.df[self.numeric_cols].corr()
+            # Use numeric conversion for correlation
+            numeric_df = self.df[self.numeric_cols].apply(pd.to_numeric, errors='coerce')
+            corr_matrix = numeric_df.corr()
             strong_corr_count = 0
             
             for i in range(len(corr_matrix.columns)):
                 for j in range(i+1, len(corr_matrix.columns)):
-                    if abs(corr_matrix.iloc[i, j]) > 0.8:
-                        strong_corr_count += 1
+                    corr_value = corr_matrix.iloc[i, j]
+                    if pd.notna(corr_value):
+                        try:
+                            corr_val = self._convert_to_number(corr_value)
+                            if abs(corr_val) > 0.8:
+                                strong_corr_count += 1
+                        except (TypeError, ValueError):
+                            continue
             
             if strong_corr_count > 0:
                 insights.append({
@@ -802,9 +869,9 @@ class DataAnalyzer:
         for col in self.categorical_cols:
             if self.df[col].nunique() == 2:
                 value_counts = self.df[col].value_counts()
-                imbalance_ratio = value_counts.iloc[0] / value_counts.iloc[1]
+                imbalance_ratio = float(value_counts.iloc[0]) / float(value_counts.iloc[1])
                 
-                if imbalance_ratio > 5:  # 5:1 ratio or worse
+                if imbalance_ratio > 5.0:  # 5:1 ratio or worse
                     insights.append({
                         "type": "warning",
                         "title": "Imbalanced Categories",
@@ -841,18 +908,18 @@ class DataAnalyzer:
         """
         
         checks = []
-        readiness_score = 100
+        readiness_score = 100.0
         
         # Check 1: No missing values
         missing_pct = (self.df.isnull().sum().sum() / self.df.size) * 100
-        if missing_pct > 0:
+        if missing_pct > 0.0:
             checks.append({
                 "check": "Missing Values",
-                "status": "warning" if missing_pct < 5 else "fail",
+                "status": "warning" if missing_pct < 5.0 else "fail",
                 "message": f"{missing_pct:.1f}% missing data",
                 "impact": "ML models can't handle missing values - must fill or remove"
             })
-            readiness_score -= min(missing_pct, 30)
+            readiness_score -= min(missing_pct, 30.0)
         else:
             checks.append({
                 "check": "Missing Values",
@@ -871,7 +938,7 @@ class DataAnalyzer:
                 "message": f"{duplicates} duplicate rows",
                 "impact": "Can bias model training - should remove"
             })
-            readiness_score -= min(dup_pct * 2, 20)
+            readiness_score -= min(dup_pct * 2.0, 20.0)
         else:
             checks.append({
                 "check": "Duplicates",
@@ -888,7 +955,7 @@ class DataAnalyzer:
                 "message": f"Only {len(self.df)} rows",
                 "impact": "Very small dataset - ML models need more data to learn patterns"
             })
-            readiness_score -= 25
+            readiness_score -= 25.0
         elif len(self.df) < 1000:
             checks.append({
                 "check": "Sample Size",
@@ -896,7 +963,7 @@ class DataAnalyzer:
                 "message": f"{len(self.df)} rows (small)",
                 "impact": "Adequate but more data would improve model performance"
             })
-            readiness_score -= 10
+            readiness_score -= 10.0
         else:
             checks.append({
                 "check": "Sample Size",
@@ -913,7 +980,7 @@ class DataAnalyzer:
                 "message": "No numeric columns",
                 "impact": "ML models need numeric features - must convert categorical to numbers"
             })
-            readiness_score -= 30
+            readiness_score -= 30.0
         else:
             checks.append({
                 "check": "Numeric Features",
@@ -934,7 +1001,7 @@ class DataAnalyzer:
                 "message": f"{len(high_card_cats)} high cardinality columns",
                 "impact": "Need to encode or reduce categories before ML"
             })
-            readiness_score -= 15
+            readiness_score -= 15.0
         elif self.categorical_cols:
             checks.append({
                 "check": "Categorical Encoding",
@@ -942,7 +1009,7 @@ class DataAnalyzer:
                 "message": f"{len(self.categorical_cols)} categorical columns",
                 "impact": "Need encoding (one-hot or label encoding) for ML"
             })
-            readiness_score -= 5
+            readiness_score -= 5.0
         else:
             checks.append({
                 "check": "Categorical Encoding",
@@ -952,13 +1019,13 @@ class DataAnalyzer:
             })
         
         # Overall readiness
-        if readiness_score >= 85:
+        if readiness_score >= 85.0:
             readiness_level = "Ready"
             explanation = "Your data is ready for machine learning! Minimal preparation needed."
-        elif readiness_score >= 70:
+        elif readiness_score >= 70.0:
             readiness_level = "Nearly Ready"
             explanation = "Your data needs minor cleaning before ML. Should take just a few minutes."
-        elif readiness_score >= 50:
+        elif readiness_score >= 50.0:
             readiness_level = "Needs Work"
             explanation = "Your data needs some preparation before ML. Plan for data cleaning."
         else:
@@ -966,7 +1033,7 @@ class DataAnalyzer:
             explanation = "Your data needs significant cleaning before ML. Start with data quality fixes."
         
         return {
-            "readiness_score": max(0, round(readiness_score, 2)),
+            "readiness_score": max(0.0, round(readiness_score, 2)),
             "readiness_level": readiness_level,
             "checks": checks,
             "explanation": (
@@ -1217,3 +1284,64 @@ class DataAnalyzer:
                 "5. Fine-tune hyperparameters if needed"
             ]
         }
+    
+    def _convert_to_number(self, value) -> float:
+        """
+        Safely convert any value to a float number.
+        Used throughout the code where number conversion is needed.
+        """
+        # If it's already missing, return 0
+        if pd.isna(value):
+            return 0.0
+        
+        try:
+            # Try direct float conversion first
+            result = float(value)
+            
+            # Check if we got NaN back
+            if np.isnan(result):
+                return 0.0
+            return result
+            
+        except (TypeError, ValueError):
+            # If direct conversion fails, try other approaches
+            
+            # For numpy/pandas objects, try to extract the value
+            if hasattr(value, 'item'):
+                try:
+                    extracted = value.item()
+                    if not pd.isna(extracted):
+                        return float(extracted)
+                except:
+                    pass
+            
+            # As a last resort, try string conversion
+            try:
+                str_value = str(value)
+                
+                # Handle complex numbers (like 3+4j)
+                if 'j' in str_value or 'i' in str_value:
+                    # Try to extract just the real part
+                    import cmath
+                    try:
+                        complex_val = complex(str_value)
+                        return float(complex_val.real)
+                    except:
+                        # If complex conversion fails, try to extract numbers
+                        cleaned = ''.join(c for c in str_value if c.isdigit() or c in '.-+')
+                        if cleaned:
+                            # Try to get the real part
+                            parts = cleaned.replace('+', ' ').replace('-', ' -').strip().split()
+                            if parts:
+                                return float(parts[0])
+                
+                # For regular numbers, clean and convert
+                cleaned = ''.join(c for c in str_value if c.isdigit() or c in '.-')
+                if cleaned and cleaned != '-':  # Don't convert just a minus sign
+                    return float(cleaned)
+                    
+            except (ValueError, TypeError):
+                pass
+        
+        # If everything fails, return 0
+        return 0
